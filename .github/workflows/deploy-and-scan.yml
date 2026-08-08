@@ -1,0 +1,110 @@
+name: CI/CD Pipeline - Security Scan & Bicep Deployment
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+  security-events: write
+
+jobs:
+  # -----------------------------------------------------------------
+  # 1. Security & Compliance Scanning
+  # -----------------------------------------------------------------
+  security-scan:
+    name: Security & IaC Scanning
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Secret Scanning using Gitleaks
+      - name: Gitleaks Secret Scanner
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Infrastructure as Code Security Scanning using Checkov
+      - name: Checkov Static Code Analysis
+        uses: bridgecrewio/checkov-action@master
+        with:
+          framework: bicep
+          output_format: cli,sarif
+          output_file_path: console,results.sarif
+          soft_fail: true
+
+      # Trivy Security Scanner for Misconfigurations
+      - name: Trivy IaC Security Scanner
+        uses: aquasecurity/trivy-action@0.20.0
+        with:
+          scan-type: 'config'
+          scan-ref: '.'
+          format: 'table'
+          exit-code: '0'
+
+      # Azure Bicep Syntax & Compilation Check
+      - name: Bicep Build & Lint Check
+        run: |
+          az bicep build --file main.bicep
+
+  # -----------------------------------------------------------------
+  # 2. Azure What-If Preview (Runs on Pull Requests)
+  # -----------------------------------------------------------------
+  what-if:
+    name: Azure Bicep What-If Preview
+    needs: security-scan
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Azure Bicep What-If Preview
+        run: |
+          az deployment sub what-if \
+            --location koreaeast \
+            --template-file main.bicep \
+            --parameters main.bicepparam
+
+  # -----------------------------------------------------------------
+  # 3. Azure Bicep Deployment (Runs on Push to Main)
+  # -----------------------------------------------------------------
+  deploy:
+    name: Deploy Microservices Landing Zone
+    needs: security-scan
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy Bicep Landing Zone
+        run: |
+          az deployment sub create \
+            --name "microservices-landingzone-${{ github.run_number }}" \
+            --location koreaeast \
+            --template-file main.bicep \
+            --parameters main.bicepparam

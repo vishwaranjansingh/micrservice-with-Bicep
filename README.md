@@ -155,5 +155,25 @@ Modify `main.bicepparam` or pass custom parameters during deployment:
 | `resourceGroupName` | `string` | `rg-microservice-dev` | Name of Resource Group created |
 | `acrSku` | `string` | `Standard` | ACR Pricing tier (`Basic`, `Standard`, `Premium`) |
 | `systemVmSize` | `string` | `Standard_D2s_v5` | VM SKU for system node pool |
-| `minNodeCount` | `int` | `2` | Minimum nodes in system pool |
-| `maxNodeCount` | `int` | `5` | Maximum nodes in system pool |
+| `minNodeCount` | `int` | `1` | Minimum nodes in system pool |
+| `maxNodeCount` | `int` | `3` | Maximum nodes in system pool |
+
+---
+
+## 🤖 CI/CD Automation & Security Scanning
+
+This repository includes a GitHub Actions workflow: [`.github/workflows/deploy-and-scan.yml`](file:///.github/workflows/deploy-and-scan.yml).
+
+### Security Tools Integrated
+- **Gitleaks**: Scans commits and history for hardcoded secrets, tokens, or credentials.
+- **Checkov**: Static security analysis for Infrastructure as Code (Bicep/ARM).
+- **Trivy**: Scans for misconfigurations and security vulnerabilities in IaC templates.
+- **Bicep Linter**: Built-in syntax & compilation check via Azure CLI (`az bicep build`).
+
+### Required GitHub Repository Secrets
+For automated deployment via GitHub Actions using Azure OIDC (passwordless federation), add the following secrets to your GitHub repository settings (**Settings > Secrets and variables > Actions**):
+
+- `AZURE_SUBSCRIPTION_ID`: `a60bfb4b-160f-44e7-979b-775bdd787c90`
+- `AZURE_TENANT_ID`: `cf95a022-f760-4c81-b527-b8d8a9caddc2`
+- `AZURE_CLIENT_ID`: `f31102d6-37cd-4d5a-85c5-f0a5bb3ff6f2`
+
