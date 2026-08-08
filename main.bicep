@@ -50,7 +50,7 @@ param tags object = {
 
 // 1. Resource Group Module
 module resourceGroup 'modules/resourceGroup.bicep' = {
-  name: 'deploy-rg'
+  name: 'deploy-rg-${location}'
   params: {
     resourceGroupName: resourceGroupName
     location: location
@@ -60,7 +60,7 @@ module resourceGroup 'modules/resourceGroup.bicep' = {
 
 // 2. Log Analytics Workspace Module
 module logAnalytics 'modules/logAnalytics.bicep' = {
-  name: 'deploy-log-analytics'
+  name: 'deploy-log-analytics-${location}'
   scope: az.resourceGroup(resourceGroupName)
   dependsOn: [
     resourceGroup
@@ -74,7 +74,7 @@ module logAnalytics 'modules/logAnalytics.bicep' = {
 
 // 3. Virtual Network Module
 module network 'modules/network.bicep' = {
-  name: 'deploy-network'
+  name: 'deploy-network-${location}'
   scope: az.resourceGroup(resourceGroupName)
   dependsOn: [
     resourceGroup
@@ -89,7 +89,7 @@ module network 'modules/network.bicep' = {
 
 // 4. User-Assigned Managed Identity Module
 module identity 'modules/identity.bicep' = {
-  name: 'deploy-identity'
+  name: 'deploy-identity-${location}'
   scope: az.resourceGroup(resourceGroupName)
   dependsOn: [
     resourceGroup
@@ -103,7 +103,7 @@ module identity 'modules/identity.bicep' = {
 
 // 5. Azure Container Registry Module
 module acr 'modules/acr.bicep' = {
-  name: 'deploy-acr'
+  name: 'deploy-acr-${location}'
   scope: az.resourceGroup(resourceGroupName)
   dependsOn: [
     resourceGroup
@@ -118,7 +118,7 @@ module acr 'modules/acr.bicep' = {
 
 // 6. Azure Kubernetes Service Module
 module aks 'modules/aks.bicep' = {
-  name: 'deploy-aks'
+  name: 'deploy-aks-${location}'
   scope: az.resourceGroup(resourceGroupName)
   params: {
     aksClusterName: aksClusterName
@@ -137,7 +137,7 @@ module aks 'modules/aks.bicep' = {
 
 // 7. ACR Pull Role Assignment Module for AKS Kubelet Identity
 module roleAssignment 'modules/roleAssignment.bicep' = {
-  name: 'deploy-role-assignment'
+  name: 'deploy-role-assignment-${location}'
   scope: az.resourceGroup(resourceGroupName)
   params: {
     acrName: acr.outputs.acrName
