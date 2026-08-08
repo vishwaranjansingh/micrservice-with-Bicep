@@ -44,7 +44,7 @@ jobs:
 
       # Trivy Security Scanner for Misconfigurations
       - name: Trivy IaC Security Scanner
-        uses: aquasecurity/trivy-action@0.20.0
+        uses: aquasecurity/trivy-action@master
         with:
           scan-type: 'config'
           scan-ref: '.'
