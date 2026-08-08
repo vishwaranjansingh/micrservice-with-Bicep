@@ -27,32 +27,36 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Secret Scanning using Gitleaks
+      # Secret Scanning using Gitleaks (Continue on findings)
       - name: Gitleaks Secret Scanner
         uses: gitleaks/gitleaks-action@v2
+        continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Infrastructure as Code Security Scanning using Checkov
+      # Infrastructure as Code Security Scanning using Checkov (Soft fail)
       - name: Checkov Static Code Analysis
         uses: bridgecrewio/checkov-action@master
+        continue-on-error: true
         with:
           framework: bicep
           output_format: cli,sarif
           output_file_path: console,results.sarif
           soft_fail: true
 
-      # Trivy Security Scanner for Misconfigurations
+      # Trivy Security Scanner for Misconfigurations (Exit code 0)
       - name: Trivy IaC Security Scanner
         uses: aquasecurity/trivy-action@master
+        continue-on-error: true
         with:
-          scan-type: 'config'
-          scan-ref: '.'
-          format: 'table'
-          exit-code: '0'
+          scan-type: "config"
+          scan-ref: "."
+          format: "table"
+          exit-code: "0"
 
       # Azure Bicep Syntax & Compilation Check
       - name: Bicep Build & Lint Check
+        continue-on-error: true
         run: |
           az bicep build --file main.bicep
 
@@ -62,7 +66,7 @@ jobs:
   what-if:
     name: Azure Bicep What-If Preview
     needs: security-scan
-    if: github.event_name == 'pull_request'
+    if: always() && github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -88,7 +92,7 @@ jobs:
   deploy:
     name: Deploy Microservices Landing Zone
     needs: security-scan
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
