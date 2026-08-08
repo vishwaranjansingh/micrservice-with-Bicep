@@ -1,6 +1,6 @@
 using 'main.bicep'
 
-param location = 'koreaeast'
+param location = 'koreacentral'
 param environment = 'dev'
 param projectPrefix = 'microservice'
 param resourceGroupName = 'rg-microservice-dev'

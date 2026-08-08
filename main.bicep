@@ -1,7 +1,7 @@
 targetScope = 'subscription'
 
 @description('Primary Azure region for all resources.')
-param location string = 'koreaeast'
+param location string = 'koreacentral'
 
 @description('Environment name (e.g. dev, test, prod).')
 param environment string = 'dev'

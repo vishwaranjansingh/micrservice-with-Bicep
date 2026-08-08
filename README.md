@@ -81,7 +81,7 @@ az account set --subscription a60bfb4b-160f-44e7-979b-775bdd787c90
 #### PowerShell (Windows)
 ```powershell
 az deployment sub what-if `
-  --location koreaeast `
+  --location koreacentral `
   --template-file main.bicep `
   --parameters main.bicepparam
 ```
@@ -89,7 +89,7 @@ az deployment sub what-if `
 #### Bash (Linux/macOS)
 ```bash
 az deployment sub what-if \
-  --location koreaeast \
+  --location koreacentral \
   --template-file main.bicep \
   --parameters main.bicepparam
 ```
@@ -100,7 +100,7 @@ az deployment sub what-if \
 ```powershell
 az deployment sub create `
   --name "microservices-landingzone-deployment" `
-  --location koreaeast `
+  --location koreacentral `
   --template-file main.bicep `
   --parameters main.bicepparam
 ```
@@ -109,7 +109,7 @@ az deployment sub create `
 ```bash
 az deployment sub create \
   --name "microservices-landingzone-deployment" \
-  --location koreaeast \
+  --location koreacentral \
   --template-file main.bicep \
   --parameters main.bicepparam
 ```
