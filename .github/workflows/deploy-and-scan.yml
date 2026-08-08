@@ -1,3 +1,4 @@
+# Triggering deployment workflow with updated Azure secrets
 name: CI/CD Pipeline - Security Scan & Bicep Deployment
 
 on:
