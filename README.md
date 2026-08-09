@@ -32,17 +32,23 @@ graph TD
 
 ```text
 .
-├── main.bicep               # Subscription-level deployment orchestrator
-├── main.bicepparam          # Bicep parameters configuration file
+├── main.bicep                  # Subscription-level deployment orchestrator
+├── main.bicepparam             # Development environment parameter file
+├── prod/
+│   └── main.prod.bicepparam    # Production environment parameter specifications
 ├── modules/
-│   ├── resourceGroup.bicep   # Resource Group creation module (Subscription scope)
-│   ├── network.bicep         # Virtual Network, Subnets, and NSG module
-│   ├── identity.bicep        # User-Assigned Managed Identity module
-│   ├── acr.bicep             # Azure Container Registry module (Secured)
-│   ├── logAnalytics.bicep    # Log Analytics Workspace module
-│   ├── aks.bicep             # Azure Kubernetes Service module (Azure CNI Overlay & Workload Identity)
-│   └── roleAssignment.bicep  # AcrPull RBAC Role Assignment module
-└── README.md                # Deployment documentation
+│   ├── resourceGroup.bicep      # Resource Group creation module
+│   ├── network.bicep            # Virtual Network, Subnets, and NSG module
+│   ├── identity.bicep           # User-Assigned Managed Identity module
+│   ├── acr.bicep                # Azure Container Registry module
+│   ├── logAnalytics.bicep       # Log Analytics Workspace module
+│   ├── aks.bicep                # AKS cluster module (Azure CNI Overlay & Workload Identity)
+│   └── roleAssignment.bicep     # AcrPull RBAC Role Assignment module
+├── azure-pipelines/
+│   └── azure-pipelines.yml      # Azure DevOps Production Pipeline (Gated PR Plan & Deploy)
+├── .github/workflows/
+│   └── deploy-and-scan.yml      # GitHub Actions CI/CD workflow
+└── README.md                   # Documentation
 ```
 
 ---

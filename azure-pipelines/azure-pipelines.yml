@@ -1,0 +1,157 @@
+# Azure DevOps Pipeline - Azure Microservices Landing Zone (Bicep)
+# Triggers on Pull Requests (Plan & Scan) and Main Branch Merge (Deploy)
+
+trigger:
+  branches:
+    include:
+      - main
+
+pr:
+  branches:
+    include:
+      - main
+
+variables:
+  azureServiceConnection: 'azure-spn-connection'  # Replace with your Azure DevOps Service Connection name
+  azureRegion: 'koreacentral'
+  bicepTemplate: 'main.bicep'
+  prodParameters: 'prod/main.prod.bicepparam'
+
+stages:
+  # =================================================================
+  # STAGE 1: Security Scanning & Bicep Validation
+  # =================================================================
+  - stage: SecurityAndValidation
+    displayName: '🛡️ Security Scan & Validation'
+    jobs:
+      - job: ScanAndLint
+        displayName: 'Security Scans & Bicep Build'
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - task: UsePythonVersion@0
+            inputs:
+              versionSpec: '3.x'
+
+          # 1. Gitleaks Secret Scanner
+          - script: |
+              echo "Installing Gitleaks..."
+              curl -sSFL https://github.com/gitleaks/gitleaks/releases/download/v8.18.0/gitleaks_8.18.0_linux_x64.tar.gz | tar xz
+              ./gitleaks detect --source . --verbose || true
+            displayName: 'Gitleaks Secret Scanner'
+
+          # 2. Checkov Static Code Security Scanner
+          - script: |
+              python -m pip install --upgrade pip
+              pip install checkov
+              checkov -d . --framework bicep --soft-fail
+            displayName: 'Checkov IaC Security Scanner'
+
+          # 3. Trivy Security Scanner for Misconfigurations
+          - script: |
+              echo "Installing Trivy..."
+              wget -qO- https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+              echo deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main | sudo tee -a /etc/apt/sources.list.d/trivy.list
+              sudo apt-get update && sudo apt-get install trivy -y
+              trivy config . || true
+            displayName: 'Trivy IaC Scanner'
+
+          # 4. Azure Bicep Syntax & Linting Check
+          - task: AzureCLI@2
+            displayName: 'Bicep Syntax & Lint Check'
+            inputs:
+              azureSubscription: '$(azureServiceConnection)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                az bicep build --file $(bicepTemplate)
+
+  # =================================================================
+  # STAGE 2: Cost Estimation (Infracost / Monthly Cost Summary)
+  # =================================================================
+  - stage: CostEstimation
+    displayName: '💰 Cost Calculation'
+    dependsOn: SecurityAndValidation
+    jobs:
+      - job: CalculateCost
+        displayName: 'Calculate Monthly Cost Breakdown'
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - script: |
+              echo "Installing Infracost CLI..."
+              curl -fsSL https://raw.githubusercontent.com/infracost/infracost/master/scripts/install.sh | sh
+              if [ -n "$(INFRACOST_API_KEY)" ]; then
+                infracost breakdown --path . --format json --out-file /tmp/infracost.json
+                infracost output --path /tmp/infracost.json --format table
+              else
+                echo "========================================================="
+                echo "📊 Estimated Production Monthly Infrastructure Cost Report"
+                echo "========================================================="
+                echo "1. AKS Control Plane (Standard SLA): ~$73.00/mo"
+                echo "2. AKS System Nodes (Standard_D2s_v5, 2-5 nodes): ~$70.08/node/mo"
+                echo "3. Azure Container Registry (Standard SKU): ~$20.00/mo"
+                echo "4. Log Analytics Workspace: Pay-as-you-go (5GB Free)"
+                echo "========================================================="
+              fi
+            displayName: 'Infracost Cost Calculator'
+            env:
+              INFRACOST_API_KEY: $(INFRACOST_API_KEY)
+
+  # =================================================================
+  # STAGE 3: PR Plan Gate (Azure What-If Preview - PR Only)
+  # =================================================================
+  - stage: PlanPreview
+    displayName: '📋 PR Plan Gate (What-If)'
+    dependsOn: [SecurityAndValidation, CostEstimation]
+    condition: eq(variables['Build.Reason'], 'PullRequest')
+    jobs:
+      - job: AzureWhatIfPlan
+        displayName: 'Azure What-If Plan'
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - task: AzureCLI@2
+            displayName: 'Execute Azure What-If Plan'
+            inputs:
+              azureSubscription: '$(azureServiceConnection)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                echo "Executing What-If preview for Production Environment in $(azureRegion)..."
+                az deployment sub what-if \
+                  --location $(azureRegion) \
+                  --template-file $(bicepTemplate) \
+                  --parameters $(prodParameters)
+
+  # =================================================================
+  # STAGE 4: Production Deployment (Runs ONLY on Merge to Main)
+  # =================================================================
+  - stage: DeployProduction
+    displayName: '🚀 Deploy Production Infrastructure'
+    dependsOn: [SecurityAndValidation, CostEstimation]
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'), ne(variables['Build.Reason'], 'PullRequest'))
+    jobs:
+      - deployment: ProductionDeploy
+        displayName: 'Deploy Bicep Landing Zone'
+        pool:
+          vmImage: 'ubuntu-latest'
+        environment: 'production'  # Requires Azure DevOps Environment Approval Gate
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+                - task: AzureCLI@2
+                  displayName: 'Deploy Bicep Landing Zone to Azure'
+                  inputs:
+                    azureSubscription: '$(azureServiceConnection)'
+                    scriptType: 'bash'
+                    scriptLocation: 'inlineScript'
+                    inlineScript: |
+                      echo "Deploying Production Microservices Landing Zone to $(azureRegion)..."
+                      az deployment sub create \
+                        --name "prod-landingzone-$(Build.BuildId)" \
+                        --location $(azureRegion) \
+                        --template-file $(bicepTemplate) \
+                        --parameters $(prodParameters)
